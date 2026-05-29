@@ -1,0 +1,13 @@
+── PASS COMPLETE · v0.3.0 · 2026-05-29 ──────────────────────
+
+Title: Discord REST client lands, zero deps
+Summary: bumper now pulls changelog reports over the raw Discord REST API with no client library, and traces every run to <#0000000000000000000>.
+
+Highlights:
+· Raw fetch-based Discord client — no discord.js, no new dependencies
+· One-pass buffer resolves the second-most-recent report by default
+· Every run posts an observability trace to <#0000000000000000000>; the token is never logged
+
+Commit: 10a0217
+Tests: 25 passed · 0 failed · 0 skipped
+Branch: clean

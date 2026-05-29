@@ -1,0 +1,33 @@
+# blog.bumper — source repo root config
+# Copy to .bumper.toml and fill in your guild/channel IDs.
+# Run `bumper init` to regenerate this file.
+
+[source]
+module         = "lumaweave"          # module enum (D2); default for posts without Project:
+report_channel = "discord://<guild-id>/<channel-id>"  # #changelog
+debug_channel  = "discord://<guild-id>/<channel-id>"  # #debug
+buffer         = 1                    # 0 = latest message; 1 = second-most-recent (default)
+token_env      = "DISCORD_BOT_TOKEN"  # env var holding the bot token (never inline the token)
+
+[target]
+repo         = "https://github.com/bitmosh/bitmosh-website"
+branch       = "main"
+content_path = "content/blog/dev/{YYYY-MM-DD}/{slug}/index.mdx"
+local_clone  = "~/.bumper/bitmosh-website"  # bumper-managed working clone
+
+[git]
+author          = "blog.bumper <bumper@bitmosh.dev>"
+commit_template = "bump: {version} → {date} ({title})"
+push            = "auto"              # "auto" | "manual" | "dry-run"
+
+[post]
+status       = "published"            # "draft" | "published"
+commentary   = "empty"                # "empty" | "draft-synthesis"
+tag_strategy = "from-version"         # seeds tags with [version]
+timezone     = "America/Chicago"      # day-container rollover + time rendering
+
+[guard]
+fail_on_validation_error = true       # invalid frontmatter → exit non-zero, write nothing
+fail_on_duplicate        = false      # same commit already posted → skip (exit 0), don't fail
+skip_if_no_report        = true       # buffer finds nothing new → quiet no-op
+require_blog_ff          = true       # blog repo must be fast-forwardable → else exit 1

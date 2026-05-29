@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.bumper/
+parse-failures/
+*.local
+.env
+.env.*
+!.env.example
+.bumper.toml

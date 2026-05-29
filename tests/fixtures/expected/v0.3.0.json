@@ -1,0 +1,18 @@
+{
+  "version": "v0.3.0",
+  "date": "2026-05-29",
+  "time": "00:24:08-05:00",
+  "title": "Discord REST client lands, zero deps",
+  "slug": "v0-3-0-discord-rest-client-lands-zero-deps",
+  "description": "bumper now pulls changelog reports over the raw Discord REST API with no client library, and traces every run to <#0000000000000000000>.",
+  "module": "lumaweave",
+  "highlights": [
+    "Raw fetch-based Discord client — no discord.js, no new dependencies",
+    "One-pass buffer resolves the second-most-recent report by default",
+    "Every run posts an observability trace to <#0000000000000000000>; the token is never logged"
+  ],
+  "learnings": [],
+  "commit": "10a0217",
+  "tests": "25 passed · 0 failed · 0 skipped",
+  "branch": "clean"
+}

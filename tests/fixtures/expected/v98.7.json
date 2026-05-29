@@ -1,0 +1,21 @@
+{
+  "version": "v98.7",
+  "date": "2026-05-27",
+  "time": "00:23:13-05:00",
+  "title": "PICKING_MODE bailout cuts hover cost",
+  "slug": "v98-7-picking-mode-bailout-cuts-hover-cost",
+  "description": "Early-returning from the plasma fragment shader during the picking pass drops hover-frame cost across every tested GPU.",
+  "module": "lumaweave",
+  "highlights": [
+    "Picking pass early-returns from the plasma shader when PICKING_MODE is set",
+    "Hover-frame readback cost down ~1.3x on RTX-class GPUs, ~2x on older Intel",
+    "Hover state cached so identical-target moves skip the readback entirely"
+  ],
+  "learnings": [
+    "readPixels cost is dominated by the queued GPU work it waits on, not the read",
+    "The bailout's speedup scales inversely with pipeline efficiency"
+  ],
+  "commit": "c1f0a9d",
+  "tests": "41 passed · 0 failed · 0 skipped",
+  "branch": "clean"
+}

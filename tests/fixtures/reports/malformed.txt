@@ -1,0 +1,13 @@
+── PASS COMPLETE · v99.0 · 2026-06-01 ──────────────────────
+
+Title: Failure fixture missing commit field
+Summary: This fixture intentionally omits the Commit line to exercise the parse-failure path.
+Project: general
+
+Highlights:
+· No Commit line present in this report
+· Parser must throw ParseError for the commit field
+· Raw text should be captured to parse-failures/
+
+Tests: 0 passed · 0 failed · 0 skipped
+Branch: clean

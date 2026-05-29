@@ -1,0 +1,31 @@
+{
+  "name": "blog.bumper",
+  "version": "0.1.0",
+  "description": "CLI that parses Bandit's structured #changelog reports and lands pass-posts in bitmosh.dev's daily container",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "bumper": "./bin/bumper"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "dev": "node --env-file-if-exists=.env --import tsx src/cli.ts"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "gray-matter": "^4.0.3",
+    "simple-git": "^3.27.0",
+    "smol-toml": "^1.6.1",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.0"
+  }
+}
