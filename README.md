@@ -1,3 +1,4 @@
+![blog.bumper](images/blog-bumper-repo-banner.png)
 # blog.bumper
 
 **A second push, on autopilot.** `blog.bumper` turns the structured end-of-task reports your
