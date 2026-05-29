@@ -19,6 +19,7 @@ deterministic and yours. Today the chat source is **Discord** and the host is **
 system is built around roles (a chat source, an agent, a content repo, a host) so other adapters —
 Telegram, others — slot in without reworking the core.
 
+![blog.bumper](images/blog-bumper-infographic.png)
 ---
 
 ## Start here — the docs
