@@ -1,3 +1,5 @@
+
+
 ![blog.bumper](images/blog-bumper-repo-banner.png)
 # blog.bumper
 
