@@ -25,16 +25,65 @@ program
 
 program
   .command("init")
-  .description("Write .bumper.example.toml in the current directory")
-  .option("--force", "overwrite if the file already exists")
-  .action((opts: { force?: boolean }) => {
-    const dest = resolve(process.cwd(), ".bumper.example.toml");
-    if (existsSync(dest) && !opts.force) {
-      console.error("error: .bumper.example.toml already exists (pass --force to overwrite)");
+  .description("Interactive setup wizard — produces .bumper.toml and .env")
+  .option("--example", "write .bumper.example.toml instead of running the wizard")
+  .option("--force", "overwrite .bumper.example.toml if it exists (only with --example)")
+  .action(async (opts: { example?: boolean; force?: boolean }) => {
+    if (opts.example) {
+      // Legacy behavior: write the static example file.
+      const dest = resolve(process.cwd(), ".bumper.example.toml");
+      if (existsSync(dest) && !opts.force) {
+        console.error("error: .bumper.example.toml already exists (pass --force to overwrite)");
+        process.exit(1);
+      }
+      writeFileSync(dest, EXAMPLE_TOML, "utf-8");
+      console.log("wrote .bumper.example.toml");
+      return;
+    }
+
+    // Interactive wizard.
+    const { runWizard } = await import("./prompts/runner.js");
+    const { manifest, assembleConfig } = await import("./prompts/manifest.js");
+    const { writeConfigFiles } = await import("./prompts/writer.js");
+    const { confirm } = await import("@inquirer/prompts");
+
+    console.log("\nblog.bumper setup wizard\n");
+
+    let answers: Record<string, unknown>;
+    try {
+      answers = await runWizard(manifest);
+    } catch (e) {
+      // User pressed Ctrl-C (ExitPromptError) — exit cleanly.
+      if (e instanceof Error && e.name === "ExitPromptError") {
+        console.log("\ncancelled.");
+        process.exit(0);
+      }
+      throw e;
+    }
+
+    const raw = assembleConfig(answers);
+
+    console.log("\nwriting config...");
+    let outcome;
+    try {
+      outcome = await writeConfigFiles(raw, process.cwd());
+    } catch (e) {
+      console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
       process.exit(1);
     }
-    writeFileSync(dest, EXAMPLE_TOML, "utf-8");
-    console.log("wrote .bumper.example.toml");
+
+    console.log("\ndone.");
+    if (outcome.tomlWritten) console.log(`  .bumper.toml → ${outcome.tomlPath}`);
+    if (outcome.envUpdated) console.log(`  .env         → ${outcome.envPath}`);
+
+    const runDry = await confirm({
+      message: "Run `bumper bump --dry` to verify the config?",
+      default: false,
+    }).catch(() => false);
+
+    if (runDry) {
+      console.log("\nrun: bumper bump --dry --config .bumper.toml");
+    }
   });
 
 program
