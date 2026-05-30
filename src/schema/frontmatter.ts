@@ -10,7 +10,8 @@ export const frontmatterSchema = z.object({
   time:        z.string().regex(/^\d{2}:\d{2}(:\d{2})?[+-]\d{2}:\d{2}$/),
   section:     z.literal("dev"),
   category:    z.enum(CATEGORIES).default("dev-log"),
-  module:      z.enum(MODULES),
+  // free string — validated against the project registry on the bumper side, not the schema (0.2.0)
+  module:      z.string().min(1),
   version:     z.string().regex(/^v\d+(\.\d+){1,2}$/),
   tags:        z.array(z.string()).default([]),
   status:      z.enum(["draft", "published"]).default("published"),

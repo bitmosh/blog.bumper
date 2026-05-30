@@ -47,8 +47,13 @@ describe("parseConfig", () => {
     expect(config.git.push).toBe("auto");
   });
 
-  it("throws ConfigError for an invalid module slug", () => {
+  it("accepts any non-empty module string", () => {
     const raw = { ...base, source: { ...base.source, module: "phantom" } };
+    expect(() => parseConfig(raw)).not.toThrow();
+  });
+
+  it("throws ConfigError for an empty module string", () => {
+    const raw = { ...base, source: { ...base.source, module: "" } };
     expect(() => parseConfig(raw)).toThrow(ConfigError);
   });
 
@@ -96,7 +101,7 @@ describe("parseConfig", () => {
   });
 
   it("error message names the invalid field", () => {
-    const raw = { ...base, source: { ...base.source, module: "phantom" } };
+    const raw = { ...base, source: { ...base.source, module: "" } };
     try {
       parseConfig(raw);
       expect.fail("should have thrown");

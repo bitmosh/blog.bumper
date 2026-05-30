@@ -45,8 +45,12 @@ describe("frontmatterSchema", () => {
     expect(frontmatterSchema.safeParse({ ...base, time: "22:15:30-05:00" }).success).toBe(true);
   });
 
-  it("rejects an unknown module", () => {
-    expect(frontmatterSchema.safeParse({ ...base, module: "phantom" }).success).toBe(false);
+  it("accepts any non-empty module string", () => {
+    expect(frontmatterSchema.safeParse({ ...base, module: "phantom" }).success).toBe(true);
+  });
+
+  it("rejects an empty module string", () => {
+    expect(frontmatterSchema.safeParse({ ...base, module: "" }).success).toBe(false);
   });
 
   it("rejects version without v prefix", () => {
