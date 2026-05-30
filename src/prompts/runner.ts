@@ -1,8 +1,8 @@
-import { input, select, confirm } from "@inquirer/prompts";
+import { input, select, confirm, checkbox } from "@inquirer/prompts";
 
-export type PromptType = "text" | "select" | "confirm" | "custom";
+export type PromptType = "text" | "select" | "confirm" | "custom" | "multiselect";
 
-export type Choice = { name: string; value: string };
+export type Choice = { name: string; value: unknown };
 
 export type PromptDef<A extends Record<string, unknown> = Record<string, unknown>> = {
   key: string;
@@ -44,10 +44,10 @@ export async function runWizard(
         break;
 
       case "select":
-        value = await select<string>({
+        value = await select<unknown>({
           message: def.message,
           choices: def.choices ?? [],
-          default: def.default as string | undefined,
+          default: def.default,
         });
         break;
 
@@ -55,6 +55,13 @@ export async function runWizard(
         value = await confirm({
           message: def.message,
           default: def.default as boolean | undefined,
+        });
+        break;
+
+      case "multiselect":
+        value = await checkbox({
+          message: def.message,
+          choices: (def.choices ?? []).map((c) => ({ name: c.name, value: c.value })),
         });
         break;
 
