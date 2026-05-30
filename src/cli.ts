@@ -11,6 +11,12 @@ import {
 import { parseReport, ParseError } from "./parser/index.js";
 import { renderMDX, WriterError } from "./mdx/writer.js";
 import { bumpRepo, GitError, buildGitPlan } from "./git/driver.js";
+import {
+  addProjectCmd,
+  listProjectsCmd,
+  infoProjectCmd,
+  removeProjectCmd,
+} from "./registry/commands.js";
 
 const VERSION = "0.1.0";
 
@@ -266,5 +272,55 @@ async function sendTrace(
   ];
   await postDebug(debugChannelId, lines.join("\n"), token);
 }
+
+program
+  .command("project-add <name>")
+  .description("Enroll a git repo as a project in the registry")
+  .option("--path <path>", "local path to the repo (skips the prompt)")
+  .action(async (name: string, opts: { path?: string }) => {
+    try {
+      await addProjectCmd(name, opts);
+    } catch (e) {
+      console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("project-list")
+  .description("List all enrolled projects")
+  .action(() => {
+    try {
+      listProjectsCmd();
+    } catch (e) {
+      console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("project-info <name>")
+  .description("Show details for an enrolled project, including its resolved target")
+  .action((name: string) => {
+    try {
+      infoProjectCmd(name);
+    } catch (e) {
+      console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("project-remove <name>")
+  .description("Remove a project from the registry (does not touch files on disk)")
+  .option("-y, --yes", "skip confirmation prompt")
+  .action(async (name: string, opts: { yes?: boolean }) => {
+    try {
+      await removeProjectCmd(name, opts);
+    } catch (e) {
+      console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
+  });
 
 await program.parseAsync();
