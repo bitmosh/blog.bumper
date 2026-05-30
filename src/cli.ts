@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig, EXAMPLE_TOML } from "./config.js";
 import {
@@ -76,13 +76,42 @@ program
     if (outcome.tomlWritten) console.log(`  .bumper.toml → ${outcome.tomlPath}`);
     if (outcome.envUpdated) console.log(`  .env         → ${outcome.envPath}`);
 
-    const runDry = await confirm({
-      message: "Run `bumper bump --dry` to verify the config?",
-      default: false,
-    }).catch(() => false);
+    // Determine the token env var name from the assembled config.
+    const sourceSection = raw["source"] as Record<string, unknown>;
+    const tokenEnvKey =
+      typeof sourceSection?.token_env === "string"
+        ? sourceSection.token_env
+        : "DISCORD_BOT_TOKEN";
 
-    if (runDry) {
-      console.log("\nrun: bumper bump --dry --config .bumper.toml");
+    // Check if the token is actually set: in process.env OR non-empty in .env.
+    const tokenInEnv = !!(process.env[tokenEnvKey]);
+    let tokenInFile = false;
+    try {
+      const envContent = readFileSync(outcome.envPath, "utf-8");
+      const line = envContent.split("\n").find((l) => l.startsWith(tokenEnvKey + "="));
+      if (line) tokenInFile = line.slice(tokenEnvKey.length + 1).trim().length > 0;
+    } catch { /* .env absent or unreadable */ }
+
+    if (tokenInEnv || tokenInFile) {
+      // Token is present — the verify run will actually work.
+      const runDry = await confirm({
+        message: "Run `bumper bump --dry` to verify the config?",
+        default: false,
+      }).catch(() => false);
+
+      if (runDry) {
+        console.log("\nrun: bumper bump --dry --config .bumper.toml");
+      }
+    } else {
+      // Token is empty — guide the user rather than offering a verify that would fail.
+      console.log(`
+✓ Config written.
+
+One more step before you can post:
+  1. Add your Discord bot token to .env — open it and fill in the ${tokenEnvKey}= line.
+  2. Then verify with:  bumper bump --dry
+
+(.env is gitignored — your token stays local. See DISCORD_SETUP.md if you still need to create a bot.)`);
     }
   });
 

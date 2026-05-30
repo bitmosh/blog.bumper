@@ -20,15 +20,31 @@ function discordIdValidator(v: unknown): true | string {
   return "Must be a 17–20 digit Discord snowflake ID";
 }
 
+const KNOWN_GIT_HOSTS = /github\.com|gitlab\.com|bitbucket\.org|codeberg\.org/;
+
+function repoHeuristicValidator(value: unknown): true | string {
+  const v = String(value ?? "");
+  // Must pass the Zod URL check first
+  const urlResult = zodValidator(configSchema.shape.target.shape.repo)(v);
+  if (urlResult !== true) return urlResult;
+  // Known git hosting providers → allow
+  let parsed: URL;
+  try { parsed = new URL(v); } catch { return "Invalid URL"; }
+  if (KNOWN_GIT_HOSTS.test(parsed.hostname)) return true;
+  // Explicit .git suffix → allow
+  if (v.endsWith(".git")) return true;
+  // Self-hosted git: owner/repo path structure (≥2 segments) → allow
+  if (parsed.pathname.split("/").filter(Boolean).length >= 2) return true;
+  // Looks like a site page URL — prompt for a git remote instead
+  return "That looks like a site URL — bumper needs the git repo it commits posts to, e.g. https://github.com/you/your-blog or a git remote URL.";
+}
+
 // ── Prompt manifest ────────────────────────────────────────────────────────
 //
-// Wired (working end-to-end this pass):
-//   _guildId, source.report_channel (custom), source.debug_channel (custom),
-//   source.module, target.repo, target.content_path, git.author
-//
-// Stubbed (TODOs — filled with schema defaults in assembleConfig):
-//   source.buffer, source.token_env, target.branch, target.local_clone,
-//   git.commit_template, git.push, all [post] fields, all [guard] fields
+// Two-tier structure:
+//   ESSENTIAL — always shown (_guildId, channel URIs, module, repo, content_path,
+//               git.author, buffer, push, status, timezone)
+//   ADVANCED  — only shown when the _advanced gate is accepted
 
 export const manifest: PromptDef[] = [
   // ── Discord: shared guild ID ──────────────────────────────────────────
@@ -88,8 +104,8 @@ export const manifest: PromptDef[] = [
   {
     key: "target.repo",
     type: "text",
-    message: "Blog repo URL (e.g. https://github.com/you/your-blog):",
-    validate: zodValidator(configSchema.shape.target.shape.repo),
+    message: "Your blog's GIT repository URL (not your site URL) — e.g. https://github.com/you/your-blog:",
+    validate: repoHeuristicValidator,
   },
 
   // ── target.content_path ──────────────────────────────────────────────
@@ -105,31 +121,173 @@ export const manifest: PromptDef[] = [
   {
     key: "git.author",
     type: "text",
-    message: "Git author for bumped commits (Name <email>) — this is who the auto-posted commits show as in your blog repo:",
+    message: "Git author for the commits bumper makes in your blog repo, as Name <email> (who the auto-posted commits show as):",
     default: "blog.bumper <bumper@example.dev>",
     validate: (v) => {
-      if (typeof v !== "string" || v.length === 0) return "Required"
-      // loose check: must look like "Something <something>"
-      if (!/^.+<.+>$/.test(v)) return "Format: Name <email>, e.g. blog.bumper <bumper@you.dev>"
-      return true
+      if (typeof v !== "string" || v.length === 0) return "Required";
+      if (!/^.+<.+@.+>$/.test(v)) return "Format: Name <email>, e.g. blog.bumper <bumper@you.dev>";
+      return true;
     },
   },
 
-  // ── TODO: source.buffer (default 1) ──────────────────────────────────
-  // ── TODO: source.token_env (default "DISCORD_BOT_TOKEN") ─────────────
-  // ── TODO: target.branch (default "main") ─────────────────────────────
-  // ── TODO: target.local_clone (default "~/.bumper/bitmosh-website") ───
-  // ── TODO: git.commit_template (default "bump: {version} → ...") ──────
-  // ── TODO: git.push select (auto/manual/dry-run) ──────────────────────
-  // ── TODO: post.status, post.commentary, post.tag_strategy, post.timezone
-  // ── TODO: guard.fail_on_validation_error, fail_on_duplicate, etc. ────
+  // ── ESSENTIAL: source.buffer ─────────────────────────────────────────
+  {
+    key: "source.buffer",
+    type: "text",
+    message: "Which report to grab: 0 = most recent message, 1 = second-most-recent (default — lets you post a report while already starting the next task):",
+    default: "1",
+    validate: (v) => {
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0) return "Must be a non-negative integer (0, 1, 2…)";
+      return true;
+    },
+  },
+
+  // ── ESSENTIAL: git.push ───────────────────────────────────────────────
+  {
+    key: "git.push",
+    type: "select",
+    message: "Push behavior after bumper commits:",
+    choices: [
+      { name: "auto — commit + push automatically", value: "auto" },
+      { name: "manual — commit but you push yourself", value: "manual" },
+      { name: "dry-run — build the post but never write", value: "dry-run" },
+    ],
+    default: "auto",
+  },
+
+  // ── ESSENTIAL: post.status ────────────────────────────────────────────
+  {
+    key: "post.status",
+    type: "select",
+    message: "Default post status:",
+    choices: [
+      { name: "published — live immediately", value: "published" },
+      { name: "draft — staged for you to publish on your site", value: "draft" },
+    ],
+    default: "published",
+  },
+
+  // ── ESSENTIAL: post.timezone ──────────────────────────────────────────
+  {
+    key: "post.timezone",
+    type: "text",
+    message: "IANA timezone for date rollover + timestamps, e.g. America/New_York, Europe/London:",
+    default: "America/Chicago",
+  },
+
+  // ── ADVANCED GATE ─────────────────────────────────────────────────────
+  {
+    key: "_advanced",
+    type: "confirm",
+    message: "Customize advanced settings (token env, branch, clone path, commit format, comments, tags, guard rules)? Sane defaults are used otherwise.",
+    default: false,
+  },
+
+  // ── ADVANCED: source.token_env ────────────────────────────────────────
+  {
+    key: "source.token_env",
+    type: "text",
+    message: "Env var name holding your Discord bot token (default: \"DISCORD_BOT_TOKEN\"):",
+    default: "DISCORD_BOT_TOKEN",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: target.branch ───────────────────────────────────────────
+  {
+    key: "target.branch",
+    type: "text",
+    message: "Branch in your blog repo to commit to (default: \"main\"):",
+    default: "main",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: target.local_clone ─────────────────────────────────────
+  {
+    key: "target.local_clone",
+    type: "text",
+    message: "Local path for bumper's working clone of your blog repo (default: \"~/.bumper/blog-clone\"):",
+    default: "~/.bumper/blog-clone",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: git.commit_template ────────────────────────────────────
+  {
+    key: "git.commit_template",
+    type: "text",
+    message: "Commit message format — {version}, {date}, {title}, {slug}, {commit} are substituted (default: \"bump: {version} → {date} ({title})\"):",
+    default: "bump: {version} → {date} ({title})",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: post.commentary ─────────────────────────────────────────
+  {
+    key: "post.commentary",
+    type: "select",
+    message: "Commentary block in generated posts (default: \"empty\"):",
+    choices: [
+      { name: "empty — no commentary block", value: "empty" },
+      { name: "draft-synthesis — seed a commentary draft from learnings", value: "draft-synthesis" },
+    ],
+    default: "empty",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: post.tag_strategy ───────────────────────────────────────
+  {
+    key: "post.tag_strategy",
+    type: "select",
+    message: "How post tags are seeded (default: \"from-version\"):",
+    choices: [
+      { name: "from-version — tags: [version], e.g. [v98.4]", value: "from-version" },
+    ],
+    default: "from-version",
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: guard.fail_on_validation_error ──────────────────────────
+  {
+    key: "guard.fail_on_validation_error",
+    type: "confirm",
+    message: "Abort the run on invalid frontmatter? (recommended — prevents a malformed post from being committed):",
+    default: true,
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: guard.fail_on_duplicate ────────────────────────────────
+  {
+    key: "guard.fail_on_duplicate",
+    type: "confirm",
+    message: "Treat an already-posted commit as an error? (false = quiet skip, recommended for idempotent reruns):",
+    default: false,
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: guard.skip_if_no_report ────────────────────────────────
+  {
+    key: "guard.skip_if_no_report",
+    type: "confirm",
+    message: "Exit quietly when the buffer finds nothing new, instead of erroring?",
+    default: true,
+    when: (a) => a["_advanced"] === true,
+  },
+
+  // ── ADVANCED: guard.require_blog_ff ──────────────────────────────────
+  {
+    key: "guard.require_blog_ff",
+    type: "confirm",
+    message: "Require the blog repo to be fast-forwardable before pushing? (recommended — prevents unsafe force-pushes):",
+    default: true,
+    when: (a) => a["_advanced"] === true,
+  },
 ];
 
 // ── Config assembly ────────────────────────────────────────────────────────
 
 /**
  * Maps flat wizard answers onto the nested config shape.
- * Wired fields come from answers; stubbed fields use the schema defaults.
+ * Essential-tier answers are always present.
+ * Advanced-tier answers may be absent when the gate was declined — fall back to documented defaults.
  */
 export function assembleConfig(answers: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -137,31 +295,31 @@ export function assembleConfig(answers: Record<string, unknown>): Record<string,
       module: answers["source.module"] ?? "general",
       report_channel: answers["source.report_channel"],
       debug_channel: answers["source.debug_channel"],
-      buffer: 1,                          // TODO: answers["source.buffer"]
-      token_env: "DISCORD_BOT_TOKEN",     // TODO: answers["source.token_env"]
+      buffer: Number(answers["source.buffer"] ?? 1),
+      token_env: answers["source.token_env"] ?? "DISCORD_BOT_TOKEN",
     },
     target: {
       repo: answers["target.repo"],
-      branch: "main",                     // TODO: answers["target.branch"]
+      branch: answers["target.branch"] ?? "main",
       content_path: answers["target.content_path"],
-      local_clone: "~/.bumper/bitmosh-website", // TODO: answers["target.local_clone"]
+      local_clone: answers["target.local_clone"] ?? "~/.bumper/blog-clone",
     },
     git: {
       author: answers["git.author"],
-      commit_template: "bump: {version} → {date} ({title})", // TODO
-      push: "auto",                       // TODO: answers["git.push"]
+      commit_template: answers["git.commit_template"] ?? "bump: {version} → {date} ({title})",
+      push: answers["git.push"] ?? "auto",
     },
     post: {
-      status: "published",                // TODO
-      commentary: "empty",                // TODO
-      tag_strategy: "from-version",       // TODO
-      timezone: "America/Chicago",        // TODO
+      status: answers["post.status"] ?? "published",
+      commentary: answers["post.commentary"] ?? "empty",
+      tag_strategy: answers["post.tag_strategy"] ?? "from-version",
+      timezone: answers["post.timezone"] ?? "America/Chicago",
     },
     guard: {
-      fail_on_validation_error: true,     // TODO
-      fail_on_duplicate: false,           // TODO
-      skip_if_no_report: true,            // TODO
-      require_blog_ff: true,              // TODO
+      fail_on_validation_error: answers["guard.fail_on_validation_error"] ?? true,
+      fail_on_duplicate: answers["guard.fail_on_duplicate"] ?? false,
+      skip_if_no_report: answers["guard.skip_if_no_report"] ?? true,
+      require_blog_ff: answers["guard.require_blog_ff"] ?? true,
     },
   };
 }
