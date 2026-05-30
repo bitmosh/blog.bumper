@@ -77,6 +77,11 @@ how the project learns what people actually do with it. You're free to strip it 
 your site — but if you leave it, you're part of the visible community using it, not just a silent
 clone.
 
+## Built with
+
+blog.bumper is small because it stands on excellent open-source work:
+[commander](https://github.com/tj/commander.js) (CLI) · [simple-git](https://github.com/steveukx/git-js) (git) · [zod](https://github.com/colinhacks/zod) (validation) · [gray-matter](https://github.com/jonschlinkert/gray-matter) & [yaml](https://github.com/eemeli/yaml) (frontmatter) · [smol-toml](https://github.com/squirrelchat/smol-toml) (config) · built and tested with [TypeScript](https://github.com/microsoft/TypeScript), [vitest](https://github.com/vitest-dev/vitest), and [tsx](https://github.com/privatenumber/tsx).
+
 ---
 
 ## Status & roadmap
