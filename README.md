@@ -1,7 +1,10 @@
-
-
 ![blog.bumper](images/blog-bumper-repo-banner.png)
 # blog.bumper
+
+[![CI](https://github.com/bitmosh/blog.bumper/actions/workflows/ci.yml/badge.svg)](https://github.com/bitmosh/blog.bumper/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-A6F35A.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-22E0C4.svg)](.nvmrc)
+[![Release](https://img.shields.io/github/v/release/bitmosh/blog.bumper?color=4CC9FF)](https://github.com/bitmosh/blog.bumper/releases)
 
 **A second push, on autopilot.** `blog.bumper` turns the structured end-of-task reports your
 coding agent already writes into published blog posts — no second context-switch, no copy-paste,
