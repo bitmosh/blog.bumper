@@ -17,6 +17,8 @@ import {
   infoProjectCmd,
   removeProjectCmd,
 } from "./registry/commands.js";
+import { loadRegistry } from "./registry/store.js";
+import { resolveRoute, RouteError } from "./registry/route.js";
 
 const VERSION = "0.1.0";
 
@@ -188,10 +190,30 @@ program
         throw e; // unexpected — rethrow to outer handler
       }
 
+      // ── route ──────────────────────────────────────────────────────────
+      let routedParsed: typeof parsed;
+      let routedConfig: typeof config;
+      try {
+        const registry = loadRegistry();
+        const route = resolveRoute(parsed.module, registry, config);
+        routedParsed = { ...parsed, module: route.module };
+        routedConfig = { ...config, target: route.target };
+        if (dry) {
+          console.log(`[dry] route: ${route.source} (module=${route.module})`);
+        }
+      } catch (e) {
+        if (e instanceof RouteError) {
+          console.error(`error: ${e.message}`);
+          await sendTrace(debugChannelId, token, source, `route error: ${e.message}`, dry, t0).catch(() => {});
+          process.exit(1);
+        }
+        throw e;
+      }
+
       if (dry) {
         console.log(`[dry] fetched ${message.id} via ${source}`);
         console.log("[dry] parsed report:");
-        console.log(JSON.stringify(parsed, null, 2));
+        console.log(JSON.stringify(routedParsed, null, 2));
       } else {
         console.log(`fetched ${message.id} via ${source}`);
       }
@@ -200,10 +222,10 @@ program
       let outcome: string;
       try {
         if (dry) {
-          const mdx = renderMDX(parsed, config); // Zod gate
+          const mdx = renderMDX(routedParsed, routedConfig); // Zod gate
           console.log("[dry] MDX:");
           console.log(mdx);
-          const plan = buildGitPlan(config, parsed);
+          const plan = buildGitPlan(routedConfig, routedParsed);
           console.log("[dry] git plan:");
           console.log(`  clone/pull:  ${plan.cloneOrPull}`);
           console.log(`  target:      ${plan.targetPath}`);
@@ -211,7 +233,7 @@ program
           console.log(`  push target: ${plan.pushTarget}`);
           outcome = `dry-run — ${parsed.version} ${parsed.commit}`;
         } else {
-          const bumpResult = await bumpRepo(parsed, config);
+          const bumpResult = await bumpRepo(routedParsed, routedConfig);
           if (bumpResult.status === "skipped") {
             if (config.guard.fail_on_duplicate) {
               console.error(`error: duplicate — commit=${parsed.commit} already posted`);
