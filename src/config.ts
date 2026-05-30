@@ -16,7 +16,8 @@ const discordURISchema = z.string().regex(/^discord:\/\/.+\/.+$/, {
 
 export const configSchema = z.object({
   source: z.object({
-    module: z.enum(["lumaweave", "cerebra", "bonsai", "gwells", "general"]),
+    // free string — validated against the project registry on the bumper side, not the schema (0.2.0)
+    module: z.string().min(1),
     report_channel: discordURISchema,
     debug_channel: discordURISchema,
     buffer: z.number().int().min(0).default(1),
@@ -79,7 +80,7 @@ export function loadConfig(configPath: string): Config {
 export const EXAMPLE_TOML = `# blog.bumper — source repo root config
 
 [source]
-module         = "lumaweave"          # module enum (D2); default for posts without Project:
+module         = "lumaweave"          # project module; default for posts without Project:
 report_channel = "discord://<guild-id>/<channel-id>"  # #changelog
 debug_channel  = "discord://<guild-id>/<channel-id>"  # #debug
 buffer         = 1                    # 0 = latest message; 1 = second-most-recent (default)

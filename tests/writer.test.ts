@@ -218,8 +218,8 @@ describe("Zod gate — hard refusal on invalid frontmatter", () => {
     }
   });
 
-  it("invalid module enum value throws WriterError(validation)", () => {
-    const report = { ...baseReport, module: "malware" };
+  it("empty module string throws WriterError(validation)", () => {
+    const report = { ...baseReport, module: "" };
     expect(() => buildFrontmatterObject(report, baseConfig)).toThrow(WriterError);
     try {
       buildFrontmatterObject(report, baseConfig);
