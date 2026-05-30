@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-# Loads .env (if present) via Node's built-in flag — no dotenv dep needed.
-exec node --env-file-if-exists=.env "$(dirname "$0")/../dist/cli.js" "$@"

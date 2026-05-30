@@ -1,18 +1,41 @@
 {
   "name": "blog.bumper",
   "version": "0.1.0",
-  "description": "CLI that parses Bandit's structured #changelog reports and lands pass-posts in bitmosh.dev's daily container",
+  "description": "CLI that parses structured end-of-task reports and lands pass-posts in a blog's daily container",
   "type": "module",
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },
   "bin": {
-    "bumper": "./bin/bumper"
+    "bumper": "bin/bumper.js"
   },
+  "files": [
+    "dist",
+    "bin",
+    ".bumper.example.toml",
+    ".env.example"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bitmosh/blog.bumper.git"
+  },
+  "homepage": "https://github.com/bitmosh/blog.bumper#readme",
+  "bugs": "https://github.com/bitmosh/blog.bumper/issues",
+  "keywords": [
+    "blog",
+    "cli",
+    "automation",
+    "mdx",
+    "dev-blog",
+    "discord-bot",
+    "developer-tools"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "dev": "node --env-file-if-exists=.env --import tsx src/cli.ts"
+    "dev": "node --env-file-if-exists=.env --import tsx src/cli.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "commander": "^12.1.0",
