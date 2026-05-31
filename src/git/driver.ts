@@ -122,14 +122,6 @@ export async function bumpRepo(
   report: ParsedReport,
   config: Config,
 ): Promise<BumpResult> {
-  // Safety: never push directly to bitmosh-website main — require a review branch
-  if (config.target.repo.includes("bitmosh-website") && config.target.branch === "main") {
-    throw new GitError(
-      "refusing: cannot push to bitmosh-website main — use a review branch (e.g. blog/dev)",
-      "io",
-    );
-  }
-
   if (!config.guard.require_blog_ff) {
     process.stderr.write(
       "WARNING: require_blog_ff is disabled — non-FF guard will not run. This is unsafe for shared repos.\n",

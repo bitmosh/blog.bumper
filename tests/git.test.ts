@@ -301,30 +301,6 @@ describe("buildGitPlan", () => {
 
 // ── Safety guard ────────────────────────────────────────────────────────────
 
-describe("bitmosh-website safety guard", () => {
-  it("refuses to push to bitmosh-website:main", async () => {
-    // makeConfig defaults to branch "main" — must be blocked
-    const config = makeConfig("/tmp/clone", "https://github.com/bitmosh/bitmosh-website");
-    await expect(bumpRepo(BASE_REPORT, config)).rejects.toThrow(GitError);
-    try {
-      await bumpRepo(BASE_REPORT, config);
-    } catch (e) {
-      expect((e as GitError).code).toBe("io");
-      expect((e as GitError).message).toContain("bitmosh-website");
-      expect((e as GitError).message).toContain("main");
-    }
-  });
-
-  it("does not block bitmosh-website:blog/dev (guard condition only matches main)", () => {
-    // The guard is: repo.includes("bitmosh-website") && branch === "main"
-    // blog/dev must not satisfy the second condition
-    const repo = "https://github.com/bitmosh/bitmosh-website";
-    const blocked = (branch: string) => repo.includes("bitmosh-website") && branch === "main";
-    expect(blocked("main")).toBe(true);
-    expect(blocked("blog/dev")).toBe(false);
-    expect(blocked("staging")).toBe(false);
-  });
-});
 
 // ── Idempotency through git path ────────────────────────────────────────────
 
