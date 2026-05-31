@@ -174,6 +174,7 @@ program
           timestamp: message.timestamp,
           messageId: message.id,
           configModule: config.source.module,
+          timezone: config.post.timezone,
         });
       } catch (e) {
         if (e instanceof ParseError) {

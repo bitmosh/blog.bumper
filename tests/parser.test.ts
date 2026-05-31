@@ -16,6 +16,7 @@ const V98_7_INPUT = {
   timestamp: "2026-05-29T05:23:13.824000+00:00",
   messageId: "1509789191683444757",
   configModule: "lumaweave",
+  timezone: "America/Chicago",
 };
 
 const V030_INPUT = {
@@ -23,6 +24,7 @@ const V030_INPUT = {
   timestamp: "2026-05-29T05:24:08.297000+00:00",
   messageId: "1509789420159766528",
   configModule: "lumaweave",
+  timezone: "America/Chicago",
 };
 
 // ── fixture round-trips ────────────────────────────────────────────────────
@@ -34,8 +36,9 @@ describe("v98.7 fixture (Project: present, Learnings: present)", () => {
     expect(result).toEqual(expected("v98.7.json"));
   });
 
-  it("date comes from report header, not Discord timestamp", () => {
-    expect(result.date).toBe("2026-05-27"); // header says 2026-05-27; Discord ts is 2026-05-29
+  it("date comes from Discord timestamp in configured timezone", () => {
+    // header says 2026-05-27 (work done then); Discord ts 2026-05-29T05:23:13Z = 2026-05-29 in CDT
+    expect(result.date).toBe("2026-05-29");
   });
 
   it("time is derived from Discord message timestamp in CST", () => {
@@ -127,7 +130,7 @@ Highlights:
 Commit: abc1234
 Tests: 1 passed
 Branch: clean`;
-    const result = parseReport({ content, timestamp: "2026-01-01T12:00:00.000Z", messageId: "0", configModule: "general" });
+    const result = parseReport({ content, timestamp: "2026-01-01T12:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" });
     expect(result.description).toBe("First highlight is the fallback description");
   });
 
@@ -141,24 +144,25 @@ Highlights:
 · Some highlight here to meet requirements
 
 Commit: abc1234`;
-    const result = parseReport({ content, timestamp: "2026-01-01T12:00:00.000Z", messageId: "0", configModule: "cerebra" });
+    const result = parseReport({ content, timestamp: "2026-01-01T12:00:00.000Z", messageId: "0", configModule: "cerebra", timezone: "America/Chicago" });
     expect(result.module).toBe("cerebra");
   });
 
-  it("date from header takes precedence over Discord timestamp date", () => {
-    // Discord timestamp is Jan 2 but report header says Jan 1
+  it("date derived from Discord timestamp, not report header", () => {
+    // Header says 2026-01-01 (when work was done); timestamp is 2026-01-02T08:00Z
+    // In CST (UTC-6): 2026-01-02T02:00:00-06:00 → date = 2026-01-02 (timestamp wins)
     const content = `── PASS COMPLETE · v1.0 · 2026-01-01 ──────────────────────
 
 Title: Date derivation check
-Summary: Verifies date is sourced from the report header not the Discord message timestamp.
+Summary: Verifies date is sourced from the Discord timestamp not the report header.
 
 Highlights:
-· Date in header is 2026-01-01
-· Discord timestamp is a day later
+· Header says 2026-01-01 but bumped Jan 2
+· Date must match the timezone-aware timestamp
 
 Commit: abc1234`;
-    const result = parseReport({ content, timestamp: "2026-01-02T00:00:00.000Z", messageId: "0", configModule: "general" });
-    expect(result.date).toBe("2026-01-01");
+    const result = parseReport({ content, timestamp: "2026-01-02T08:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" });
+    expect(result.date).toBe("2026-01-02");
   });
 });
 
@@ -171,6 +175,7 @@ describe("canonical v0.2.0 registry-batch fixture (live report format lock)", ()
     timestamp: "2026-05-30T18:00:00.000Z",
     messageId: "test-canonical",
     configModule: "fallback",
+    timezone: "America/Chicago",
   });
 
   it("header recognised as v1 format", () => {
@@ -230,20 +235,100 @@ describe("canonical v0.2.0 registry-batch fixture (live report format lock)", ()
   });
 });
 
+// ── timezone-aware date edge cases ────────────────────────────────────────
+
+describe("timezone-aware date derivation edge cases", () => {
+  function simpleReport(headerDate: string): string {
+    return `── PASS COMPLETE · v1.0 · ${headerDate} ──────────────────────
+
+Title: Timezone edge case
+Summary: Testing timezone-aware date derivation with various rollover scenarios.
+
+Highlights:
+· First highlight for test
+
+Commit: abc1234`;
+  }
+
+  it("22:41 CDT rollover — 03:41 UTC+1 next day maps to same local date (CDT)", () => {
+    // e.g. work done 2026-05-27 at 22:41 CDT, Discord ts = 2026-05-28T03:41:00Z
+    // CDT = UTC-5, so 2026-05-28T03:41Z = 2026-05-27T22:41-05:00 → date = 2026-05-27
+    const result = parseReport({
+      content: simpleReport("2026-05-27"),
+      timestamp: "2026-05-28T03:41:00.000Z",
+      messageId: "0",
+      configModule: "general",
+      timezone: "America/Chicago",
+    });
+    expect(result.date).toBe("2026-05-27");
+  });
+
+  it("23:59/00:01 CDT rollover — just before midnight stays same day", () => {
+    // 2026-05-28T04:59Z = 2026-05-27T23:59-05:00 → date = 2026-05-27
+    const result = parseReport({
+      content: simpleReport("2026-05-27"),
+      timestamp: "2026-05-28T04:59:00.000Z",
+      messageId: "0",
+      configModule: "general",
+      timezone: "America/Chicago",
+    });
+    expect(result.date).toBe("2026-05-27");
+  });
+
+  it("23:59/00:01 CDT rollover — just after midnight advances day", () => {
+    // 2026-05-28T05:01Z = 2026-05-28T00:01-05:00 → date = 2026-05-28
+    const result = parseReport({
+      content: simpleReport("2026-05-27"),
+      timestamp: "2026-05-28T05:01:00.000Z",
+      messageId: "0",
+      configModule: "general",
+      timezone: "America/Chicago",
+    });
+    expect(result.date).toBe("2026-05-28");
+  });
+
+  it("January CST (UTC-6) — offset is -06:00 not -05:00", () => {
+    // CST in January: 2026-01-15T06:30:00Z = 2026-01-15T00:30:00-06:00
+    const result = parseReport({
+      content: simpleReport("2026-01-15"),
+      timestamp: "2026-01-15T06:30:00.000Z",
+      messageId: "0",
+      configModule: "general",
+      timezone: "America/Chicago",
+    });
+    expect(result.date).toBe("2026-01-15");
+    expect(result.time).toBe("00:30:00-06:00");
+  });
+
+  it("Europe/London timezone — BST (UTC+1) in summer", () => {
+    // BST = UTC+1, 2026-06-15T23:30:00Z = 2026-06-16T00:30:00+01:00
+    const result = parseReport({
+      content: simpleReport("2026-06-15"),
+      timestamp: "2026-06-15T23:30:00.000Z",
+      messageId: "0",
+      configModule: "general",
+      timezone: "Europe/London",
+    });
+    // BST rolls over midnight: local time is 2026-06-16T00:30+01:00
+    expect(result.date).toBe("2026-06-16");
+    expect(result.time).toMatch(/^00:30:00\+01:00$/);
+  });
+});
+
 // ── failure path ───────────────────────────────────────────────────────────
 
 describe("failure path", () => {
   it("throws ParseError for malformed fixture (missing Commit:)", () => {
     const content = fixture("malformed.txt");
     expect(() =>
-      parseReport({ content, timestamp: "2026-06-01T00:00:00.000Z", messageId: "0", configModule: "general" })
+      parseReport({ content, timestamp: "2026-06-01T00:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" })
     ).toThrow(ParseError);
   });
 
   it("ParseError names the failing field", () => {
     const content = fixture("malformed.txt");
     try {
-      parseReport({ content, timestamp: "2026-06-01T00:00:00.000Z", messageId: "0", configModule: "general" });
+      parseReport({ content, timestamp: "2026-06-01T00:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" });
       expect.fail("should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(ParseError);
@@ -254,13 +339,13 @@ describe("failure path", () => {
   it("throws ParseError for unknown header format", () => {
     const content = "This is not a changelog report at all";
     expect(() =>
-      parseReport({ content, timestamp: "2026-01-01T00:00:00.000Z", messageId: "0", configModule: "general" })
+      parseReport({ content, timestamp: "2026-01-01T00:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" })
     ).toThrow(ParseError);
   });
 
   it("ParseError for unknown header names 'header' as field", () => {
     try {
-      parseReport({ content: "not a report", timestamp: "2026-01-01T00:00:00.000Z", messageId: "0", configModule: "general" });
+      parseReport({ content: "not a report", timestamp: "2026-01-01T00:00:00.000Z", messageId: "0", configModule: "general", timezone: "America/Chicago" });
       expect.fail("should have thrown");
     } catch (e) {
       expect((e as ParseError).field).toBe("header");

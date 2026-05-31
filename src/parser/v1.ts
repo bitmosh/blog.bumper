@@ -10,14 +10,13 @@ export function isV1Format(content: string): boolean {
 }
 
 export function parseV1(input: ParseInput): ParsedReport {
-  const { content, timestamp, configModule } = input;
+  const { content, timestamp, configModule, timezone } = input;
 
   const header = content.match(HEADER_RE);
   if (!header) throw new ParseError("v1 header not found", "header");
 
   const version = header[1];
-  const date = header[2];
-  const { time } = toChicagoTime(timestamp);
+  const { date, time } = toLocalTime(timezone, timestamp);
 
   const title = required(content, /^Title:\s*(.+)$/m, "title");
   const summary = optional(content, /^Summary:\s*(.+)$/m);
@@ -105,10 +104,10 @@ function buildSlug(version: string, title: string): string {
   return `${versionKebab}-${titleKebab}`;
 }
 
-function toChicagoTime(isoTimestamp: string): { date: string; time: string } {
+function toLocalTime(tz: string, isoTimestamp: string): { date: string; time: string } {
   const dt = new Date(isoTimestamp);
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago",
+    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

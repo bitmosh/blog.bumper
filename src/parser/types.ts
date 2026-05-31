@@ -16,9 +16,10 @@ export interface ParsedReport {
 
 export interface ParseInput {
   content: string;
-  timestamp: string;  // ISO 8601 from the Discord message object
+  timestamp: string;   // ISO 8601 from the Discord message object
   messageId: string;
-  configModule: string;  // fallback when no Project: line
+  configModule: string; // fallback when no Project: line
+  timezone: string;    // IANA tz (config.post.timezone) — drives both date and time fields
 }
 
 export class ParseError extends Error {
