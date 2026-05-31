@@ -11,6 +11,7 @@ import {
 import { parseReport, ParseError } from "./parser/index.js";
 import { renderMDX, WriterError } from "./mdx/writer.js";
 import { bumpRepo, GitError, buildGitPlan } from "./git/driver.js";
+import { scanBumpedPosts, unbumpPosts, contentBaseDir } from "./git/unbump.js";
 import {
   addProjectCmd,
   listProjectsCmd,
@@ -295,6 +296,123 @@ async function sendTrace(
   ];
   await postDebug(debugChannelId, lines.join("\n"), token);
 }
+
+program
+  .command("unbump")
+  .description("Interactively remove bumped posts from the blog repo")
+  .option("--dry", "show what would be removed without deleting anything")
+  .option("-y, --yes", "skip confirmation prompt (for scripting)")
+  .option("--config <path>", "path to .bumper.toml", ".bumper.toml")
+  .action(async (opts: { dry?: boolean; yes?: boolean; config: string }) => {
+    const config = loadConfig(opts.config);
+
+    const token = process.env[config.source.token_env] ?? "";
+    if (!token) {
+      console.error(
+        `error: ${config.source.token_env} is not set — add it to .env (see .env.example)`,
+      );
+      process.exit(1);
+    }
+
+    const debugChannelId = parseChannelId(config.source.debug_channel);
+    const t0 = Date.now();
+    const dry = !!opts.dry;
+
+    try {
+      // 1. Scan — fresh clone/fetch so the list reflects live state
+      console.log("scanning bumped posts...");
+      const posts = await scanBumpedPosts(config);
+
+      if (posts.length === 0) {
+        const baseDir = contentBaseDir(config.target.content_path);
+        console.log(`no bumped posts found in ${baseDir}`);
+        await sendTrace(debugChannelId, token, "unbump", "no posts found", dry, t0).catch(() => {});
+        return;
+      }
+
+      // 2. Multiselect picker
+      const { checkbox } = await import("@inquirer/prompts");
+      const selected = await checkbox<typeof posts[number]>({
+        message: `Select posts to remove (${posts.length} found — space to select, enter to confirm):`,
+        choices: posts.map((p) => ({ name: p.label, value: p })),
+      });
+
+      if (selected.length === 0) {
+        console.log("nothing selected — exiting.");
+        return;
+      }
+
+      // 3. Deletion plan
+      console.log(`\nTo be removed (${selected.length} post${selected.length > 1 ? "s" : ""}):`);
+      for (const p of selected) {
+        console.log(`  - ${p.version} · ${p.title} (${p.commit})`);
+        console.log(`    ${p.relDir}`);
+      }
+      console.log(`\nTarget: ${config.target.repo} (${config.target.branch})`);
+      console.log("Note: only the blog repo is affected — source project repos are never touched.");
+
+      // 4. --dry: print plan and stop
+      if (dry) {
+        console.log("\n[dry] nothing removed — dry-run mode.");
+        await sendTrace(
+          debugChannelId,
+          token,
+          "unbump --dry",
+          `dry-run — would remove ${selected.length} post(s): ${selected.map((p) => p.commit).join(", ")}`,
+          dry,
+          t0,
+        ).catch(() => {});
+        return;
+      }
+
+      // 5. Confirm (mandatory unless --yes)
+      if (!opts.yes) {
+        const { confirm } = await import("@inquirer/prompts");
+        const ok = await confirm({
+          message: `Delete ${selected.length} post(s) from ${config.target.branch}? This commits the removal and pushes — they will disappear from the live site.`,
+          default: false,
+        });
+        if (!ok) {
+          console.log("aborted.");
+          return;
+        }
+      }
+
+      // 6. Execute
+      const result = await unbumpPosts(selected, config);
+
+      if (result.status === "done") {
+        console.log(
+          `  removed ${result.removed.length} post(s) — commit ${result.commitSha}`,
+        );
+        await sendTrace(
+          debugChannelId,
+          token,
+          "unbump",
+          `unbumped ${result.removed.length} post(s) → ${result.commitSha}: ${result.removed.map((p) => p.commit).join(", ")}`,
+          dry,
+          t0,
+        );
+      }
+    } catch (e) {
+      if (e instanceof GitError) {
+        console.error(`error: ${e.message}`);
+        await sendTrace(
+          debugChannelId,
+          token,
+          "unbump",
+          `git error (${e.code}): ${e.message}`,
+          dry,
+          t0,
+        ).catch(() => {});
+        process.exit(1);
+      }
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`error: ${msg}`);
+      await sendTrace(debugChannelId, token, "unbump", `error: ${msg}`, dry, t0).catch(() => {});
+      process.exit(1);
+    }
+  });
 
 program
   .command("project-add <name>")
