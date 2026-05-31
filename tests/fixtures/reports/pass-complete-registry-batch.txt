@@ -1,0 +1,16 @@
+── PASS COMPLETE · v0.2.0 · 2026-05-30 ──────────────────
+Title: the project registry becomes populatable and manageable
+Summary: blog.bumper can now scan a directory of git repos, interactively enroll selected ones into a central registry, and manage them from the CLI — the groundwork that lets any developer point bumper at their own projects instead of a hardcoded module list.
+Project: blog.bumper
+Highlights:
+· git scanner discovers repos one level deep and detects .git as a file or directory, so worktrees and submodules are not silently missed
+· interactive enrollment: point bumper at a projects directory, checkbox-pick the repos to track, and they land in the registry
+· local-only repos (no remote) are first-class — a private devlog with no GitHub push is fully supported
+· four project-* commands (add, list, info, remove) give full CLI management of enrolled projects, and never modify a project's repo on disk
+Learnings:
+· factoring git-detection into shared exports kept one source of truth for "what counts as a repo"
+· the generic multiselect added to the wizard runner stays reusable for future pickers
+· surfacing a dangling target reference in project-info is where the registry's referential-integrity gap gets caught usefully
+Commit: d29229c
+Tests: 172 passed · 0 failed · 0 skipped
+Branch: clean

@@ -145,13 +145,45 @@ describe("resolveRoute — registry hit", () => {
   });
 });
 
-describe("resolveRoute — RouteError on dangling target ref", () => {
-  it("throws RouteError when project is enrolled but target is missing", () => {
+describe("resolveRoute — default-target bridge (no explicit [targets.default])", () => {
+  it("enrolled project with target 'default' and no registry targets → bridges to legacyConfig.target", () => {
     const registry: Registry = {
-      targets: {}, // target "default" is NOT defined
+      targets: {}, // no [targets.default] defined
       project: [{ name: "myproject", path: "/some/path", remote: "", target: "default" }],
     };
-    expect(() => resolveRoute("myproject", registry, makeConfig())).toThrow(RouteError);
+    const route = resolveRoute("myproject", registry, makeConfig());
+    expect(route.source).toBe("registry");
+    expect(route.module).toBe("myproject");
+    expect(route.target).toEqual(LEGACY_TARGET); // bridges to legacyConfig.target
+  });
+
+  it("bridge does not throw — single-target setup works without [targets.default]", () => {
+    const registry: Registry = {
+      targets: {},
+      project: [{ name: "myproject", path: "/p", remote: "", target: "default" }],
+    };
+    expect(() => resolveRoute("myproject", registry, makeConfig())).not.toThrow();
+  });
+
+  it("explicit [targets.default] takes precedence over the bridge", () => {
+    const registry: Registry = {
+      targets: { default: REGISTRY_TARGET }, // explicit default defined
+      project: [{ name: "myproject", path: "/p", remote: "", target: "default" }],
+    };
+    const route = resolveRoute("myproject", registry, makeConfig());
+    expect(route.source).toBe("registry");
+    expect(route.target).toEqual(REGISTRY_TARGET); // explicit wins, not LEGACY_TARGET
+    expect(route.target.repo).not.toBe(LEGACY_TARGET.repo);
+  });
+});
+
+describe("resolveRoute — RouteError on dangling non-default target ref", () => {
+  it("throws RouteError when project references a named (non-default) target not in registry", () => {
+    const registry: Registry = {
+      targets: {},
+      project: [{ name: "orphan", path: "/p", remote: "", target: "missing-target" }],
+    };
+    expect(() => resolveRoute("orphan", registry, makeConfig())).toThrow(RouteError);
   });
 
   it("error message names the project and the missing target", () => {
@@ -164,7 +196,6 @@ describe("resolveRoute — RouteError on dangling target ref", () => {
   });
 
   it("does NOT throw RouteError for an unknown project even when registry has dangling entries", () => {
-    // Unknown project → legacy fallback. The dangling entry should not affect the lookup.
     const registry: Registry = {
       targets: {},
       project: [{ name: "orphan", path: "/p", remote: "", target: "missing-target" }],

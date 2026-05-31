@@ -25,8 +25,8 @@ describe("frontmatterSchema", () => {
     expect(frontmatterSchema.safeParse({ ...base, description: "too short" }).success).toBe(false);
   });
 
-  it("rejects description longer than 200 chars", () => {
-    expect(frontmatterSchema.safeParse({ ...base, description: "x".repeat(201) }).success).toBe(false);
+  it("rejects description longer than 300 chars", () => {
+    expect(frontmatterSchema.safeParse({ ...base, description: "x".repeat(301) }).success).toBe(false);
   });
 
   it("rejects an invalid date format", () => {

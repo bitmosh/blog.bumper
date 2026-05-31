@@ -162,6 +162,74 @@ Commit: abc1234`;
   });
 });
 
+// ── canonical contract fixture (v0.2.0 registry batch) ───────────────────
+
+describe("canonical v0.2.0 registry-batch fixture (live report format lock)", () => {
+  const content = fixture("pass-complete-registry-batch.txt");
+  const result = parseReport({
+    content,
+    timestamp: "2026-05-30T18:00:00.000Z",
+    messageId: "test-canonical",
+    configModule: "fallback",
+  });
+
+  it("header recognised as v1 format", () => {
+    expect(result.version).toBe("v0.2.0");
+    expect(result.date).toBe("2026-05-30");
+  });
+
+  it("title extracted correctly", () => {
+    expect(result.title).toBe("the project registry becomes populatable and manageable");
+  });
+
+  it("summary extracted as single-line description", () => {
+    expect(result.description).toContain("scan a directory of git repos");
+    expect(result.description.length).toBeGreaterThan(20);
+  });
+
+  it("Project: line sets module (overrides configModule)", () => {
+    expect(result.module).toBe("blog.bumper");
+  });
+
+  it("slug is version-kebab + title-kebab", () => {
+    expect(result.slug).toBe(
+      "v0-2-0-the-project-registry-becomes-populatable-and-manageable",
+    );
+  });
+
+  it("all four highlights extracted", () => {
+    expect(result.highlights).toHaveLength(4);
+    expect(result.highlights[0]).toBe(
+      "git scanner discovers repos one level deep and detects .git as a file or directory, so worktrees and submodules are not silently missed",
+    );
+    expect(result.highlights[3]).toBe(
+      "four project-* commands (add, list, info, remove) give full CLI management of enrolled projects, and never modify a project's repo on disk",
+    );
+  });
+
+  it("all three learnings extracted", () => {
+    expect(result.learnings).toHaveLength(3);
+    expect(result.learnings[0]).toBe(
+      "factoring git-detection into shared exports kept one source of truth for \"what counts as a repo\"",
+    );
+    expect(result.learnings[2]).toBe(
+      "surfacing a dangling target reference in project-info is where the registry's referential-integrity gap gets caught usefully",
+    );
+  });
+
+  it("commit is d29229c", () => {
+    expect(result.commit).toBe("d29229c");
+  });
+
+  it("tests field extracted verbatim", () => {
+    expect(result.tests).toBe("172 passed · 0 failed · 0 skipped");
+  });
+
+  it("branch field extracted", () => {
+    expect(result.branch).toBe("clean");
+  });
+});
+
 // ── failure path ───────────────────────────────────────────────────────────
 
 describe("failure path", () => {

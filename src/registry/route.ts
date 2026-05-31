@@ -39,6 +39,15 @@ export function resolveRoute(
 
   const target = registry.targets[project.target];
   if (!target) {
+    // "default" with no explicit [targets.default] in registry → bridge to legacy config target.
+    // Single-target setups never need to define [targets.default] explicitly.
+    if (project.target === "default") {
+      return {
+        module: project.name,
+        target: legacyConfig.target,
+        source: "registry",
+      };
+    }
     throw new RouteError(
       `Project "${projectName}" references target "${project.target}" which is not defined in the registry — ` +
         `run \`bumper init\` to configure targets.`,
