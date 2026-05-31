@@ -4,7 +4,7 @@ import { parseConfig, ConfigError } from "../src/config.js";
 const base = {
   source: {
     module: "lumaweave",
-    report_channel: "discord://123456789012345678/987654321098765432",
+    changelog_channel: "discord://123456789012345678/987654321098765432",
     debug_channel: "discord://123456789012345678/123456789012345678",
     buffer: 1,
     token_env: "DISCORD_BOT_TOKEN",
@@ -70,7 +70,7 @@ describe("parseConfig", () => {
   it("throws ConfigError for a malformed discord URI", () => {
     const raw = {
       ...base,
-      source: { ...base.source, report_channel: "https://discord.com/channels/123/456" },
+      source: { ...base.source, changelog_channel: "https://discord.com/channels/123/456" },
     };
     expect(() => parseConfig(raw)).toThrow(ConfigError);
   });
@@ -108,5 +108,33 @@ describe("parseConfig", () => {
     } catch (e) {
       expect((e as ConfigError).message).toContain("source.module");
     }
+  });
+
+  it("throws ConfigError when changelog_channel is missing (report_channel no longer accepted)", () => {
+    const { changelog_channel: _, ...sourceWithout } = base.source;
+    const raw = { ...base, source: sourceWithout };
+    expect(() => parseConfig(raw)).toThrow(ConfigError);
+  });
+
+  it("accepts approve_channel when present (valid discord URI)", () => {
+    const raw = {
+      ...base,
+      source: { ...base.source, approve_channel: "discord://123456789012345678/111222333444555666" },
+    };
+    const config = parseConfig(raw);
+    expect(config.source.approve_channel).toBe("discord://123456789012345678/111222333444555666");
+  });
+
+  it("approve_channel is optional — config without it is valid", () => {
+    const config = parseConfig(base);
+    expect(config.source.approve_channel).toBeUndefined();
+  });
+
+  it("throws ConfigError for malformed approve_channel URI", () => {
+    const raw = {
+      ...base,
+      source: { ...base.source, approve_channel: "https://not-a-discord-uri.com" },
+    };
+    expect(() => parseConfig(raw)).toThrow(ConfigError);
   });
 });

@@ -55,15 +55,15 @@ export const manifest: PromptDef[] = [
     validate: discordIdValidator,
   },
 
-  // ── source.report_channel — assembled from guild + channelId ─────────
+  // ── source.changelog_channel — assembled from guild + channelId ──────
   {
-    key: "source.report_channel",
+    key: "source.changelog_channel",
     type: "custom",
     message: "",
     custom: async (answers) => {
       const guild = answers["_guildId"] as string;
       const channelId = await input({
-        message: "Report channel ID (your #changelog channel):",
+        message: "Changelog channel ID (your #changelog channel — bumper reads reports from here):",
         validate: discordIdValidator,
       });
       return `discord://${guild}/${channelId}`;
@@ -78,9 +78,28 @@ export const manifest: PromptDef[] = [
     custom: async (answers) => {
       const guild = answers["_guildId"] as string;
       const channelId = await input({
-        message: "Debug channel ID (your #debug channel):",
+        message: "Debug channel ID (your #debug channel — bumper posts traces here):",
         validate: discordIdValidator,
       });
+      return `discord://${guild}/${channelId}`;
+    },
+  },
+
+  // ── source.approve_channel — optional, reuses guild ──────────────────
+  {
+    key: "source.approve_channel",
+    type: "custom",
+    message: "",
+    custom: async (answers) => {
+      const guild = answers["_guildId"] as string;
+      const channelId = await input({
+        message: "Approve channel ID (your #approve-this channel — Bandit gates bumps here, leave blank to skip):",
+        validate: (v) => {
+          if (v === "") return true;
+          return discordIdValidator(v);
+        },
+      });
+      if (!channelId) return undefined;
       return `discord://${guild}/${channelId}`;
     },
   },
@@ -293,8 +312,11 @@ export function assembleConfig(answers: Record<string, unknown>): Record<string,
   return {
     source: {
       module: answers["source.module"] ?? "general",
-      report_channel: answers["source.report_channel"],
+      changelog_channel: answers["source.changelog_channel"],
       debug_channel: answers["source.debug_channel"],
+      ...(answers["source.approve_channel"] !== undefined && answers["source.approve_channel"] !== ""
+        ? { approve_channel: answers["source.approve_channel"] }
+        : {}),
       buffer: Number(answers["source.buffer"] ?? 1),
       token_env: answers["source.token_env"] ?? "DISCORD_BOT_TOKEN",
     },

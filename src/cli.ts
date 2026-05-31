@@ -141,7 +141,7 @@ program
       process.exit(1);
     }
 
-    const reportChannelId = parseChannelId(config.source.report_channel);
+    const reportChannelId = parseChannelId(config.source.changelog_channel);
     const debugChannelId = parseChannelId(config.source.debug_channel);
     const t0 = Date.now();
     const dry = !!opts.dry;

@@ -18,8 +18,9 @@ export const configSchema = z.object({
   source: z.object({
     // free string — validated against the project registry on the bumper side, not the schema (0.2.0)
     module: z.string().min(1),
-    report_channel: discordURISchema,
+    changelog_channel: discordURISchema,
     debug_channel: discordURISchema,
+    approve_channel: discordURISchema.optional(),
     buffer: z.number().int().min(0).default(1),
     token_env: z.string().default("DISCORD_BOT_TOKEN"),
   }),
@@ -80,11 +81,12 @@ export function loadConfig(configPath: string): Config {
 export const EXAMPLE_TOML = `# blog.bumper — source repo root config
 
 [source]
-module         = "lumaweave"          # project module; default for posts without Project:
-report_channel = "discord://<guild-id>/<channel-id>"  # #changelog
-debug_channel  = "discord://<guild-id>/<channel-id>"  # #debug
-buffer         = 1                    # 0 = latest message; 1 = second-most-recent (default)
-token_env      = "DISCORD_BOT_TOKEN"  # env var holding the bot token (never inline the token)
+module            = "lumaweave"          # project module; default for posts without Project:
+changelog_channel = "discord://<guild-id>/<channel-id>"  # #changelog — bumper reads reports from here
+debug_channel     = "discord://<guild-id>/<channel-id>"  # #debug — bumper posts traces here
+approve_channel   = "discord://<guild-id>/<channel-id>"  # #approve-this — Bandit gates bumps here (optional)
+buffer            = 1                    # 0 = latest message; 1 = second-most-recent (default)
+token_env         = "DISCORD_BOT_TOKEN"  # env var holding the bot token (never inline the token)
 
 [target]
 repo         = "https://github.com/bitmosh/bitmosh-website"

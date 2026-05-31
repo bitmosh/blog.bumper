@@ -30,7 +30,7 @@ const baseReport: ParsedReport = {
 const baseConfig: Config = {
   source: {
     module: "general",
-    report_channel: "discord://guild/channel",
+    changelog_channel: "discord://guild/channel",
     debug_channel: "discord://guild/debug",
     buffer: 1,
     token_env: "DISCORD_BOT_TOKEN",

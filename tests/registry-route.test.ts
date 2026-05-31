@@ -23,7 +23,7 @@ function makeConfig(module = "legacymod"): Config {
   return {
     source: {
       module,
-      report_channel: "discord://123/456",
+      changelog_channel: "discord://123/456",
       debug_channel: "discord://123/789",
       buffer: 1,
       token_env: "DISCORD_BOT_TOKEN",
