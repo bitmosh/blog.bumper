@@ -1,9 +1,9 @@
 import { ParseError } from "./types.js";
 import type { ParseInput, ParsedReport } from "./types.js";
 
-// Matches: ── PASS COMPLETE · vXX.Y[.Z] · YYYY-MM-DD ──
+// Matches: ── PASS COMPLETE · vXX.Y[.Z][a-z] · YYYY-MM-DD ──
 const HEADER_RE =
-  /── PASS COMPLETE · (v\d+(?:\.\d+){1,2}) · (\d{4}-\d{2}-\d{2}) ──/;
+  /── PASS COMPLETE · (v\d+(?:\.\d+){1,2}[a-z]?) · (\d{4}-\d{2}-\d{2}) ──/;
 
 export function isV1Format(content: string): boolean {
   return HEADER_RE.test(content);

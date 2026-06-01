@@ -12,7 +12,7 @@ export const frontmatterSchema = z.object({
   category:    z.enum(CATEGORIES).default("dev-log"),
   // free string — validated against the project registry on the bumper side, not the schema (0.2.0)
   module:      z.string().min(1),
-  version:     z.string().regex(/^v\d+(\.\d+){1,2}$/),
+  version:     z.string().regex(/^v\d+(\.\d+){1,2}[a-z]?$/),
   tags:        z.array(z.string()).default([]),
   status:      z.enum(["draft", "published"]).default("published"),
   commit:      z.string().regex(/^[0-9a-f]{7}$/),
